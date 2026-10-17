@@ -1,0 +1,8 @@
+bin/
+obj/
+
+# Local SQLite database (created on first run)
+data/
+*.db
+*.db-shm
+*.db-wal

@@ -1,0 +1,69 @@
+.login-root {
+  height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.12);
+  padding: 40px;
+  text-align: center;
+  width: 340px;
+  max-width: 90vw;
+}
+
+.login-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a73e8;
+  margin-bottom: 8px;
+}
+
+.login-subtitle {
+  color: #666;
+  margin-bottom: 28px;
+  font-size: .95rem;
+}
+
+.login-users {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border: 2px solid var(--user-color, #1a73e8);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #202124;
+  font-family: inherit;
+  transition: background .15s;
+}
+
+.login-user-btn:hover {
+  background: color-mix(in srgb, var(--user-color, #1a73e8) 10%, white);
+}
+
+.login-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--user-color, #1a73e8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
