@@ -1,10 +1,24 @@
 import { timeAgo } from "../lib/format";
+import type { PermissionState } from "../hooks/useNotifications";
+import type { AppNotification } from "../lib/types";
 import Avatar from "./Avatar";
+
+interface NotificationPanelProps {
+  items: AppNotification[];
+  unread: number;
+  error: string | null;
+  permission: PermissionState;
+  onOpen: (notification: AppNotification) => void;
+  onMarkAllRead: () => void;
+  onClear: () => void;
+  onRequestPermission: () => void;
+  onClose: () => void;
+}
 
 export default function NotificationPanel({
   items, unread, error, permission,
   onOpen, onMarkAllRead, onClear, onRequestPermission, onClose,
-}) {
+}: NotificationPanelProps) {
   return (
     <div className="notif-panel" role="dialog" aria-label="Notifications">
       <div className="notif-head">

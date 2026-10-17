@@ -1,8 +1,10 @@
 import { useEffect } from "react";
+import type { ChatApi } from "../lib/chatApi";
+import type { ChatId } from "../lib/types";
 
 /** Tells the server which chat is on screen (null when the tab is hidden or unfocused),
  *  so it can skip notifications for messages the user can already see. */
-export default function useViewingReport(api, connected, chatId) {
+export default function useViewingReport(api: ChatApi | null, connected: boolean, chatId: ChatId): void {
   useEffect(() => {
     if (!api || !connected) return;
     const report = () => {

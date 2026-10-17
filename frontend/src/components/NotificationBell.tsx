@@ -1,6 +1,12 @@
 import { countLabel } from "../lib/format";
 
-export default function NotificationBell({ unread, open, onToggle }) {
+interface NotificationBellProps {
+  unread: number;
+  open: boolean;
+  onToggle: () => void;
+}
+
+export default function NotificationBell({ unread, open, onToggle }: NotificationBellProps) {
   return (
     <button
       className={`bell-btn ${open ? "open" : ""}`}

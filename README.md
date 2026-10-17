@@ -1,6 +1,6 @@
 # SignalR Chat Demo
 
-A real-time team chat built with ASP.NET Core SignalR (backend) and React + Vite (frontend).
+A real-time team chat built with ASP.NET Core SignalR (backend) and React + Vite + TypeScript (frontend).
 Chats, message history and notifications are stored in a local SQLite database, so they survive a server restart.
 
 ## Running the project
@@ -23,6 +23,15 @@ npm run dev
 ```
 
 The dev server starts on **http://localhost:5173**.
+
+The frontend is TypeScript only (`.ts`/`.tsx`) in strict mode: `strict`, `noUncheckedIndexedAccess`,
+`exactOptionalPropertyTypes`, no `any` and no `!` non-null assertions (enforced by oxlint).
+
+```bash
+npm run typecheck   # tsc, no output on success
+npm run lint        # oxlint
+npm run build       # typecheck + production build
+```
 
 ## Users and chats
 
@@ -88,26 +97,33 @@ signalr-chat-demo/
 │   ├── appsettings.json             Connection string, allowed CORS origins
 │   ├── Program.cs                   Composition root: services, CORS, endpoints
 │   └── dotnet-tools.json            Local dotnet-ef tool
-└── frontend/src/
-    ├── App.jsx                      Picks LoginPage or ChatPage
-    ├── pages/
-    │   ├── LoginPage.jsx            "Choose who you are"
-    │   └── ChatPage.jsx             Wires the hooks to the layout
-    ├── components/                  Presentational pieces: Sidebar, ChatList, MessageList,
-    │                                MessageInput, NotificationBell/Panel, ToastStack, banners
-    ├── hooks/
-    │   ├── useChatConnection.js     SignalR connection, status, who's online
-    │   ├── useChatList.js           Chats with last-message previews
-    │   ├── useMessages.js           History of the open chat: paging, live updates, sending
-    │   ├── useNotifications.js      Notifications, toasts, browser notifications
-    │   ├── useViewingReport.js      Tells the server which chat is on screen
-    │   └── useUsers.js              The user list
-    └── lib/
-        ├── chatApi.js               All hub calls and event names in one place
-        ├── chatIds.js               Chat id helpers (must match the backend)
-        ├── config.js                API and hub URLs (VITE_API_URL / VITE_HUB_URL)
-        └── format.js                Time and badge formatting
+└── frontend/
+    ├── tsconfig.json                Strict TypeScript settings
+    └── src/
+        ├── main.tsx                 Entry point
+        ├── App.tsx                  Picks LoginPage or ChatPage
+        ├── env.d.ts                 Types for VITE_* env variables and CSS custom properties
+        ├── pages/
+        │   ├── LoginPage.tsx        "Choose who you are"
+        │   └── ChatPage.tsx         Wires the hooks to the layout
+        ├── components/              Presentational pieces: Sidebar, ChatList, MessageList,
+        │                            MessageInput, NotificationBell/Panel, ToastStack, banners
+        ├── hooks/
+        │   ├── useChatConnection.ts SignalR connection, status, who's online
+        │   ├── useChatList.ts       Chats with last-message previews
+        │   ├── useMessages.ts       History of the open chat: paging, live updates, sending
+        │   ├── useNotifications.ts  Notifications, toasts, browser notifications
+        │   ├── useViewingReport.ts  Tells the server which chat is on screen
+        │   └── useUsers.ts          The user list
+        └── lib/
+            ├── types.ts             DTO types mirroring backend/Contracts/Dtos.cs
+            ├── chatApi.ts           Typed hub calls and events (HubEventMap)
+            ├── chatIds.ts           Chat id helpers (must match the backend)
+            ├── config.ts            API and hub URLs (VITE_API_URL / VITE_HUB_URL)
+            └── format.ts            Time and badge formatting
 ```
+
+When you change a DTO in `backend/Contracts/`, update `frontend/src/lib/types.ts` to match.
 
 ## Hub API
 

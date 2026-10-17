@@ -1,7 +1,12 @@
 import useUsers from "../hooks/useUsers";
+import type { User } from "../lib/types";
 import "./LoginPage.css";
 
-export default function LoginPage({ onLogin }) {
+interface LoginPageProps {
+  onLogin: (user: User) => void;
+}
+
+export default function LoginPage({ onLogin }: LoginPageProps) {
   const users = useUsers();
 
   return (
@@ -17,7 +22,7 @@ export default function LoginPage({ onLogin }) {
               style={{ "--user-color": u.color }}
               onClick={() => onLogin(u)}
             >
-              <span className="login-avatar">{u.name[0]}</span>
+              <span className="login-avatar">{u.name.charAt(0)}</span>
               {u.name}
             </button>
           ))}

@@ -1,15 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { HubEvents, errorMessage } from "../lib/chatApi";
+import type { ChatApi } from "../lib/chatApi";
+import type { AppNotification, ChatId, NotificationsSnapshot } from "../lib/types";
 
 const MAX_ITEMS = 100;
 const TOAST_MS = 5000;
-const EMPTY = { items: [], unread: 0, unreadByChat: {} };
+const EMPTY: NotificationsSnapshot = { items: [], unread: 0, unreadByChat: {} };
 
-const canNotify = () => typeof window !== "undefined" && "Notification" in window;
-const isAway = () => document.visibilityState !== "visible" || !document.hasFocus();
+export type PermissionState = NotificationPermission | "unsupported";
+
+const canNotify = (): boolean => typeof window !== "undefined" && "Notification" in window;
+const isAway = (): boolean => document.visibilityState !== "visible" || !document.hasFocus();
 
 // Adds a live notification to the snapshot; read ones only join the list, unread ones also bump the counters.
-function withReceived(state, n) {
+function withReceived(state: NotificationsSnapshot, n: AppNotification): NotificationsSnapshot {
   if (state.items.some(x => x.id === n.id)) return state;
   const items = [n, ...state.items].slice(0, MAX_ITEMS);
   if (n.isRead) return { ...state, items };
@@ -18,7 +22,7 @@ function withReceived(state, n) {
   return { items, unread: state.unread + 1, unreadByChat };
 }
 
-function showBrowserNotification(n, onClick) {
+function showBrowserNotification(n: AppNotification, onClick: () => void): void {
   if (!canNotify() || Notification.permission !== "granted") return;
   const note = new Notification(n.title, { body: n.text, tag: n.id });
   note.onclick = () => {
@@ -28,22 +32,43 @@ function showBrowserNotification(n, onClick) {
   };
 }
 
+export interface UseNotificationsOptions {
+  api: ChatApi | null;
+  connected: boolean;
+  onOpenChat: (chatId: ChatId) => void;
+}
+
+export interface Notifications extends NotificationsSnapshot {
+  toasts: AppNotification[];
+  dismissToast: (id: string) => void;
+  /** Number of unread notifications at sign-in, or null once dismissed (or if there were none). */
+  welcome: number | null;
+  dismissWelcome: () => void;
+  error: string | null;
+  permission: PermissionState;
+  requestPermission: () => Promise<void>;
+  markRead: (id: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
+  clear: () => Promise<void>;
+}
+
 /**
  * Keeps the signed-in user's notifications in sync with the server:
  * loads them on (re)connect, applies live pushes, shows toasts and browser notifications.
  */
-export default function useNotifications({ api, connected, onOpenChat }) {
-  const [state, setState] = useState(EMPTY);
-  const [toasts, setToasts] = useState([]);
-  const [welcome, setWelcome] = useState(null); // number of unread notifications at sign-in
-  const [error, setError] = useState(null);
-  const [permission, setPermission] = useState(() => (canNotify() ? Notification.permission : "unsupported"));
+export default function useNotifications({ api, connected, onOpenChat }: UseNotificationsOptions): Notifications {
+  const [state, setState] = useState<NotificationsSnapshot>(EMPTY);
+  const [toasts, setToasts] = useState<AppNotification[]>([]);
+  const [welcome, setWelcome] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [permission, setPermission] = useState<PermissionState>(() =>
+    canNotify() ? Notification.permission : "unsupported");
   const welcomedRef = useRef(false);
   const openChatRef = useRef(onOpenChat);
 
   useEffect(() => { openChatRef.current = onOpenChat; }, [onOpenChat]);
 
-  const dismissToast = useCallback(id => setToasts(prev => prev.filter(t => t.id !== id)), []);
+  const dismissToast = useCallback((id: string) => setToasts(prev => prev.filter(t => t.id !== id)), []);
 
   // Live updates pushed by the server.
   useEffect(() => {
@@ -58,7 +83,11 @@ export default function useNotifications({ api, connected, onOpenChat }) {
       setToasts(prev => prev.some(t => t.id === n.id) ? prev : [...prev, n]);
       setTimeout(() => dismissToast(n.id), TOAST_MS);
 
-      if (isAway()) showBrowserNotification(n, () => n.chatId && openChatRef.current?.(n.chatId));
+      if (isAway()) {
+        showBrowserNotification(n, () => {
+          if (n.chatId) openChatRef.current(n.chatId);
+        });
+      }
     });
 
     // Sent after any read/clear, so every open tab of this user stays in sync.
@@ -81,7 +110,9 @@ export default function useNotifications({ api, connected, onOpenChat }) {
           if (snapshot.unread > 0) setWelcome(snapshot.unread);
         }
       })
-      .catch(err => !cancelled && setError(errorMessage(err)));
+      .catch((err: unknown) => {
+        if (!cancelled) setError(errorMessage(err));
+      });
     return () => { cancelled = true; };
   }, [api, connected]);
 
@@ -91,7 +122,7 @@ export default function useNotifications({ api, connected, onOpenChat }) {
   }, [state.unread]);
 
   // Server pushes NotificationsChanged after each of these, so there's no local state to update.
-  const run = async action => {
+  const run = async (action: (a: ChatApi) => Promise<void>): Promise<void> => {
     if (!api) return;
     try {
       await action(api);
@@ -101,7 +132,7 @@ export default function useNotifications({ api, connected, onOpenChat }) {
     }
   };
 
-  const requestPermission = async () => {
+  const requestPermission = async (): Promise<void> => {
     if (canNotify()) setPermission(await Notification.requestPermission());
   };
 

@@ -1,20 +1,30 @@
 import { TEAM_CHAT_ID, dmChatId } from "../lib/chatIds";
 import { countLabel } from "../lib/format";
+import type { ChatMap } from "../hooks/useChatList";
+import type { ChatId, Message, User, UserId } from "../lib/types";
 import Avatar from "./Avatar";
 
-function Preview({ message, userId }) {
+function Preview({ message, userId }: { message: Message | null | undefined; userId: UserId }) {
   if (!message) return null;
   const who = message.senderId === userId ? "You" : message.senderName;
   return <span className="chat-preview">{who}: {message.text}</span>;
 }
 
-function Badge({ count }) {
+function Badge({ count }: { count: number }) {
   return count > 0 ? <span className="unread-badge">{countLabel(count)}</span> : null;
 }
 
-export default function ChatList({ user, users, onlineIds, chats, unreadByChat, active, onSelect }) {
-  const team = chats[TEAM_CHAT_ID];
+export interface ChatListProps {
+  user: User;
+  users: User[];
+  onlineIds: UserId[];
+  chats: ChatMap;
+  unreadByChat: Partial<Record<ChatId, number>>;
+  active: ChatId;
+  onSelect: (chatId: ChatId) => void;
+}
 
+export default function ChatList({ user, users, onlineIds, chats, unreadByChat, active, onSelect }: ChatListProps) {
   return (
     <>
       <div className="sidebar-section-label">Channels</div>
@@ -25,7 +35,7 @@ export default function ChatList({ user, users, onlineIds, chats, unreadByChat, 
         <span className="channel-hash">#</span>
         <div className="chat-item-body">
           <span>team</span>
-          <Preview message={team?.lastMessage} userId={user.id} />
+          <Preview message={chats[TEAM_CHAT_ID]?.lastMessage} userId={user.id} />
         </div>
         <Badge count={unreadByChat[TEAM_CHAT_ID] ?? 0} />
       </div>
@@ -38,17 +48,17 @@ export default function ChatList({ user, users, onlineIds, chats, unreadByChat, 
           return (
             <li
               key={u.id}
-              className={`user-item ${isSelf ? "" : "clickable"} ${chatId && active === chatId ? "active" : ""}`}
-              onClick={() => chatId && onSelect(chatId)}
+              className={`user-item ${isSelf ? "" : "clickable"} ${chatId !== null && active === chatId ? "active" : ""}`}
+              onClick={() => { if (chatId !== null) onSelect(chatId); }}
             >
               <span className={`presence-dot ${onlineIds.includes(u.id) ? "online" : "offline"}`} />
               <Avatar name={u.name} color={u.color} />
               <div className="chat-item-body">
                 <span className="user-name">{u.name}</span>
-                {chatId && <Preview message={chats[chatId]?.lastMessage} userId={user.id} />}
+                {chatId !== null && <Preview message={chats[chatId]?.lastMessage} userId={user.id} />}
               </div>
               {isSelf && <span className="user-you">you</span>}
-              {chatId && <Badge count={unreadByChat[chatId] ?? 0} />}
+              {chatId !== null && <Badge count={unreadByChat[chatId] ?? 0} />}
             </li>
           );
         })}

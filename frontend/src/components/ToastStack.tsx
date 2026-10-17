@@ -1,6 +1,14 @@
+import type { AppNotification } from "../lib/types";
+
 const MAX_VISIBLE = 3;
 
-export default function ToastStack({ toasts, onOpen, onDismiss }) {
+interface ToastStackProps {
+  toasts: AppNotification[];
+  onOpen: (toast: AppNotification) => void;
+  onDismiss: (id: string) => void;
+}
+
+export default function ToastStack({ toasts, onOpen, onDismiss }: ToastStackProps) {
   return (
     <div className="toast-stack" aria-live="polite">
       {toasts.slice(-MAX_VISIBLE).map(t => (

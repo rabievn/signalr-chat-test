@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import { HubEvents } from "../lib/chatApi";
+import type { ChatApi } from "../lib/chatApi";
+import type { ChatId, ChatPreview } from "../lib/types";
 
-/** The user's chats keyed by id ({ lastMessage, ... }), loaded on connect and kept fresh by live messages. */
-export default function useChatList(api, connected, onError) {
-  const [chats, setChats] = useState({});
+export type ChatMap = Partial<Record<ChatId, ChatPreview>>;
+
+/** The user's chats keyed by id, loaded on connect and kept fresh by live messages. */
+export default function useChatList(
+  api: ChatApi | null,
+  connected: boolean,
+  onError: (err: unknown) => void,
+): ChatMap {
+  const [chats, setChats] = useState<ChatMap>({});
 
   useEffect(() => {
     if (!api) return;

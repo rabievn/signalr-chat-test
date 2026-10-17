@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { TEAM_CHAT_ID, dmPartnerId } from "../lib/chatIds";
 import { errorMessage } from "../lib/chatApi";
+import type { AppNotification, ChatId, User } from "../lib/types";
 import useUsers from "../hooks/useUsers";
 import useChatConnection from "../hooks/useChatConnection";
 import useChatList from "../hooks/useChatList";
@@ -17,11 +18,16 @@ import MessageInput from "../components/MessageInput";
 import ToastStack from "../components/ToastStack";
 import "./ChatPage.css";
 
-export default function ChatPage({ user, onLogout }) {
-  const [active, setActive] = useState(TEAM_CHAT_ID);
+interface ChatPageProps {
+  user: User;
+  onLogout: () => void;
+}
+
+export default function ChatPage({ user, onLogout }: ChatPageProps) {
+  const [active, setActive] = useState<ChatId>(TEAM_CHAT_ID);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [error, setError] = useState(null);
-  const onError = useCallback(err => setError(errorMessage(err)), []);
+  const [error, setError] = useState<string | null>(null);
+  const onError = useCallback((err: unknown) => setError(errorMessage(err)), []);
 
   const users = useUsers();
   const { api, status, connected, onlineIds } = useChatConnection(user.id);
@@ -30,17 +36,18 @@ export default function ChatPage({ user, onLogout }) {
   const notifications = useNotifications({ api, connected, onOpenChat: setActive });
   useViewingReport(api, connected, active);
 
-  const partner = users.find(u => u.id === dmPartnerId(active, user.id));
+  const partnerId = dmPartnerId(active, user.id);
+  const partner = users.find(u => u.id === partnerId);
   const title = active === TEAM_CHAT_ID ? "# team" : partner?.name ?? "";
   const placeholder = active === TEAM_CHAT_ID ? "Message #team…" : `Message ${partner?.name ?? ""}…`;
 
-  const openNotification = n => {
-    if (!n.isRead) notifications.markRead(n.id);
+  const openNotification = (n: AppNotification): void => {
+    if (!n.isRead) void notifications.markRead(n.id);
     if (n.chatId) setActive(n.chatId);
     setPanelOpen(false);
   };
 
-  const sendMessage = async text => {
+  const sendMessage = async (text: string): Promise<boolean> => {
     const ok = await send(text);
     if (ok) setError(null);
     return ok;
@@ -76,16 +83,16 @@ export default function ChatPage({ user, onLogout }) {
                 error={notifications.error}
                 permission={notifications.permission}
                 onOpen={openNotification}
-                onMarkAllRead={notifications.markAllRead}
-                onClear={notifications.clear}
-                onRequestPermission={notifications.requestPermission}
+                onMarkAllRead={() => void notifications.markAllRead()}
+                onClear={() => void notifications.clear()}
+                onRequestPermission={() => void notifications.requestPermission()}
                 onClose={() => setPanelOpen(false)}
               />
             )}
           </div>
         </div>
 
-        {notifications.welcome != null && (
+        {notifications.welcome !== null && (
           <WelcomeBanner
             name={user.name}
             count={notifications.welcome}
@@ -99,7 +106,7 @@ export default function ChatPage({ user, onLogout }) {
           messages={messages}
           userId={user.id}
           hasMore={hasMore}
-          onLoadOlder={loadOlder}
+          onLoadOlder={() => void loadOlder()}
         />
 
         <ErrorBar message={error} onDismiss={() => setError(null)} />

@@ -1,4 +1,11 @@
-export default function WelcomeBanner({ name, count, onOpen, onDismiss }) {
+interface WelcomeBannerProps {
+  name: string;
+  count: number;
+  onOpen: () => void;
+  onDismiss: () => void;
+}
+
+export default function WelcomeBanner({ name, count, onOpen, onDismiss }: WelcomeBannerProps) {
   return (
     <div className="welcome-banner">
       <span>

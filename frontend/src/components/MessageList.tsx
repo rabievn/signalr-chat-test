@@ -1,8 +1,17 @@
 import { useEffect, useRef } from "react";
 import { formatTime } from "../lib/format";
+import type { ChatId, Message, UserId } from "../lib/types";
 
-export default function MessageList({ chatId, messages, userId, hasMore, onLoadOlder }) {
-  const bottomRef = useRef(null);
+interface MessageListProps {
+  chatId: ChatId;
+  messages: Message[];
+  userId: UserId;
+  hasMore: boolean;
+  onLoadOlder: () => void;
+}
+
+export default function MessageList({ chatId, messages, userId, hasMore, onLoadOlder }: MessageListProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
   const lastId = messages.at(-1)?.id;
 
   // Follow new messages and chat switches, but not older pages being prepended.
