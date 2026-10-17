@@ -1,10 +1,5 @@
-function timeAgo(iso) {
-  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)} min ago`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)} h ago`;
-  return new Date(iso).toLocaleDateString();
-}
+import { timeAgo } from "../lib/format";
+import Avatar from "./Avatar";
 
 export default function NotificationPanel({
   items, unread, error, permission,
@@ -40,9 +35,7 @@ export default function NotificationPanel({
               className={`notif-item ${n.isRead ? "" : "unread"}`}
               onClick={() => onOpen(n)}
             >
-              <span className="user-avatar sm" style={{ background: n.fromUserColor ?? "#5d7185" }}>
-                {(n.fromUserName ?? "?")[0]}
-              </span>
+              <Avatar name={n.fromUserName} color={n.fromUserColor} small />
               <div className="notif-body">
                 <div className="notif-title">{n.title}</div>
                 <div className="notif-text">{n.text}</div>

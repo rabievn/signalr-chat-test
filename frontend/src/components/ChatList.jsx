@@ -1,4 +1,6 @@
-import { TEAM_CHAT_ID, dmChatId } from "./chatIds";
+import { TEAM_CHAT_ID, dmChatId } from "../lib/chatIds";
+import { countLabel } from "../lib/format";
+import Avatar from "./Avatar";
 
 function Preview({ message, userId }) {
   if (!message) return null;
@@ -7,7 +9,7 @@ function Preview({ message, userId }) {
 }
 
 function Badge({ count }) {
-  return count > 0 ? <span className="unread-badge">{count > 9 ? "9+" : count}</span> : null;
+  return count > 0 ? <span className="unread-badge">{countLabel(count)}</span> : null;
 }
 
 export default function ChatList({ user, users, onlineIds, chats, unreadByChat, active, onSelect }) {
@@ -40,7 +42,7 @@ export default function ChatList({ user, users, onlineIds, chats, unreadByChat, 
               onClick={() => chatId && onSelect(chatId)}
             >
               <span className={`presence-dot ${onlineIds.includes(u.id) ? "online" : "offline"}`} />
-              <span className="user-avatar" style={{ background: u.color }}>{u.name[0]}</span>
+              <Avatar name={u.name} color={u.color} />
               <div className="chat-item-body">
                 <span className="user-name">{u.name}</span>
                 {chatId && <Preview message={chats[chatId]?.lastMessage} userId={user.id} />}

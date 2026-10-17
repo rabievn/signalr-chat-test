@@ -1,28 +1,15 @@
-using backend.Persistence;
+using backend.Contracts;
 using backend.Hubs;
+using backend.Persistence;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
-public record NotificationDto(
-    string Id,
-    string Type,
-    string Title,
-    string Text,
-    string? FromUserId,
-    string? FromUserName,
-    string? FromUserColor,
-    string? ChatId,
-    DateTime CreatedAt,
-    bool IsRead);
-
-public record NotificationsSnapshot(IReadOnlyList<NotificationDto> Items, int Unread, Dictionary<string, int> UnreadByChat);
-
 /// <summary>Per-user notifications, persisted in SQLite and pushed live to the user's open tabs.</summary>
 public class NotificationService(
     IDbContextFactory<ChatDbContext> dbFactory,
-    IHubContext<ChatHub> hub,
+    IHubContext<ChatHub, IChatClient> hub,
     PresenceStore presence,
     UserStore users)
 {
@@ -63,7 +50,7 @@ public class NotificationService(
             // Already-read ones are still sent so the list stays current; the client only toasts unread ones.
             var conns = presence.ConnectionsFor(n.UserId);
             if (conns.Count > 0)
-                await hub.Clients.Clients(conns).SendAsync("NotificationReceived", ToDto(n));
+                await hub.Clients.Clients(conns).NotificationReceived(ToDto(n));
         }
     }
 
@@ -109,7 +96,7 @@ public class NotificationService(
 
         var conns = presence.ConnectionsFor(userId);
         if (conns.Count > 0)
-            await hub.Clients.Clients(conns).SendAsync("NotificationsChanged", await GetAsync(userId));
+            await hub.Clients.Clients(conns).NotificationsChanged(await GetAsync(userId));
     }
 
     /// <summary>Keeps only the newest <see cref="MaxPerUser"/> notifications for the user.</summary>

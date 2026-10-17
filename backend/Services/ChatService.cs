@@ -1,24 +1,30 @@
+using backend.Contracts;
 using backend.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
-public record MessageDto(string Id, string ChatId, string SenderId, string SenderName, string Text, DateTime SentAt);
-public record MessagePage(IReadOnlyList<MessageDto> Messages, bool HasMore);
-public record ChatDto(string Id, string Name, string Type, string? OtherUserId, MessageDto? LastMessage, int Unread);
-
 /// <summary>Chats, membership and message history, persisted in SQLite.</summary>
 public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore users)
 {
     public const int MaxMessageLength = 2000;
+    public const int MaxPageSize = 100;
 
     /// <summary>Direct chats get a deterministic id so both sides compute the same one.</summary>
     public static string DirectChatId(string a, string b) =>
         string.CompareOrdinal(a, b) <= 0 ? $"dm:{a}:{b}" : $"dm:{b}:{a}";
 
-    /// <summary>Member ids of the chat, or null if it doesn't exist or the user isn't in it.
-    /// A valid direct chat between two known users is created on demand.</summary>
-    public async Task<IReadOnlyList<string>?> GetMembersAsync(string userId, string chatId, bool createDirect)
+    /// <summary>True if the user is a member of the chat, or it's a direct chat of theirs nobody has written in yet.</summary>
+    public async Task<bool> CanReadAsync(string userId, string chatId)
+    {
+        if (IsOwnDirectChat(userId, chatId)) return true;
+        await using var db = await dbFactory.CreateDbContextAsync();
+        return await db.ChatMembers.AnyAsync(m => m.ChatId == chatId && m.UserId == userId);
+    }
+
+    /// <summary>Member ids of a chat the user may post in, or null if they can't.
+    /// A direct chat is created the first time someone writes in it.</summary>
+    public async Task<IReadOnlyList<string>?> GetOrCreateMembersAsync(string userId, string chatId)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
         var members = await db.ChatMembers.AsNoTracking()
@@ -26,7 +32,7 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
             .Select(m => m.UserId)
             .ToListAsync();
 
-        if (members.Count == 0 && createDirect && ParseDirect(chatId) is { } pair && (pair.A == userId || pair.B == userId))
+        if (members.Count == 0 && ParseDirect(chatId) is { } pair && (pair.A == userId || pair.B == userId))
         {
             db.Chats.Add(new Chat
             {
@@ -50,10 +56,6 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
         return members.Contains(userId) ? members : null;
     }
 
-    /// <summary>True for a direct chat id this user belongs to, whether or not it has been created yet.</summary>
-    public bool IsOwnDirectChat(string userId, string chatId) =>
-        ParseDirect(chatId) is { } pair && (pair.A == userId || pair.B == userId);
-
     public async Task<MessageDto> AddMessageAsync(string senderId, string chatId, string text)
     {
         await using var db = await dbFactory.CreateDbContextAsync();
@@ -73,7 +75,7 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
     /// <summary>Newest <paramref name="limit"/> messages older than <paramref name="before"/>, oldest first.</summary>
     public async Task<MessagePage> GetMessagesAsync(string chatId, DateTime? before, int limit)
     {
-        limit = Math.Clamp(limit, 1, 100);
+        limit = Math.Clamp(limit, 1, MaxPageSize);
         await using var db = await dbFactory.CreateDbContextAsync();
         var query = db.Messages.AsNoTracking().Where(m => m.ChatId == chatId);
         if (before is { } b)
@@ -95,6 +97,14 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
             .Where(c => c.Members.Any(m => m.UserId == userId))
             .Include(c => c.Members)
             .ToListAsync();
+        var chatIds = chats.Select(c => c.Id).ToList();
+
+        // Latest message of each chat in one query.
+        var lastMessages = await db.Messages.AsNoTracking()
+            .Where(m => chatIds.Contains(m.ChatId)
+                && m.SentAt == db.Messages.Where(x => x.ChatId == m.ChatId).Max(x => x.SentAt))
+            .ToListAsync();
+        var lastByChat = lastMessages.GroupBy(m => m.ChatId).ToDictionary(g => g.Key, g => g.First());
 
         var unread = await db.Notifications.AsNoTracking()
             .Where(n => n.UserId == userId && !n.IsRead && n.ChatId != null)
@@ -105,10 +115,7 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
         var result = new List<ChatDto>();
         foreach (var chat in chats)
         {
-            var last = await db.Messages.AsNoTracking()
-                .Where(m => m.ChatId == chat.Id)
-                .OrderByDescending(m => m.SentAt)
-                .FirstOrDefaultAsync();
+            var last = lastByChat.GetValueOrDefault(chat.Id);
             if (chat.Type == ChatType.Direct && last is null)
                 continue;
 
@@ -122,6 +129,9 @@ public class ChatService(IDbContextFactory<ChatDbContext> dbFactory, UserStore u
         }
         return result;
     }
+
+    private bool IsOwnDirectChat(string userId, string chatId) =>
+        ParseDirect(chatId) is { } pair && (pair.A == userId || pair.B == userId);
 
     private (string A, string B)? ParseDirect(string chatId)
     {

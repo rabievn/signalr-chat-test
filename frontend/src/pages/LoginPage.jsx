@@ -1,17 +1,8 @@
-import { useState, useEffect } from "react";
-import "./Login.css";
+import useUsers from "../hooks/useUsers";
+import "./LoginPage.css";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
-
-export default function Login({ onLogin }) {
-  const [users, setUsers] = useState([]);
-
-  useEffect(() => {
-    fetch(`${API_URL}/api/users`)
-      .then(r => r.json())
-      .then(setUsers)
-      .catch(() => {});
-  }, []);
+export default function LoginPage({ onLogin }) {
+  const users = useUsers();
 
   return (
     <div className="login-root">
